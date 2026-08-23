@@ -12,4 +12,4 @@ parser = argparse.ArgumentParser(description="RAG Pipeline Evaluator")
 parser.add_argument("--data", nargs='+', required=True, help="path of text file")
 parser.add_argument("--queries", required=True, help="path of queries file")
 parser.add_argument("--output", nargs='+', help="path of output file")
-
+args = parser.parse_args()
