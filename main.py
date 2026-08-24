@@ -1,9 +1,11 @@
 import logging
 import argparse
+import hashlib
 from dotenv import load_dotenv
 from langchain_community.document_loaders import TextLoader
 from langchain_classic.storage import LocalFileStore
 from langchain_classic.embeddings import CacheBackedEmbeddings
+from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 load_dotenv()
@@ -44,26 +46,14 @@ cached_embedder = CacheBackedEmbeddings.from_bytes_store(
     namespace= embeddings.model
 )
 
-
-# class TextProcessor:
-#     @staticmethod
-#     def LoadDocument(text_file: str):
-#         loader = TextLoader(file_path=text_file)
-#         return loader.load()
-
-#     @staticmethod
-#     def TextSplitter(document: list):
-#         text_splitter = RecursiveCharacterTextSplitter(
-#             chunk_size=1000,
-#             chunk_overlap=200,
-#         )
-#         final_chunks  = text_splitter.split_documents(documents=document)
-#         logging.info(f"Successfully split into {len(final_chunks)} chunks.")
-#         return final_chunks
-
 class RAGPipeline:
-    def __init__(self) -> None:
-        pass
+    def __init__(self):
+        self.vector_store = Chroma(
+            collection_name = "Cricket-INFO",
+            embedding_function=cached_embedder,
+            persist_directory=".//chroma_langchain_db"
+        )
+
     def run_evaluator(self, file_name: list, queries_file: str, outfile: str):
         all_chunks = []
         for file in file_name:
@@ -73,9 +63,9 @@ class RAGPipeline:
         if not all_chunks:
             logging.error("No chunks loaded.")
             raise
-        text_content = [chunk.page_content for chunk in all_chunks]
-        vectors = cached_embedder.embed_documents(text_content)
-        logging.info(f"Successfully generated {len(vectors)} vectors.")
+        ids = [hashlib.md5(chunk[0].page_content.encode("utf-8")).hexdigest() for chunk in all_chunks]
+        self.vector_store.add_documents(documents=all_chunks, ids=ids)
+        logging.info(f"Successfully added {len(all_chunks)} chunks to Chroma.")
         pass
     
 if __name__ == "__main__":
