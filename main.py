@@ -7,12 +7,10 @@ from langchain_classic.storage import LocalFileStore
 from langchain_classic.embeddings import CacheBackedEmbeddings
 from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-
-# Base embedding model
 
 class RAGPipeline:
     def __init__(self):
@@ -35,6 +33,14 @@ class RAGPipeline:
             persist_directory="./chroma_langchain_db"
         )
 
+        self.model = ChatGoogleGenerativeAI(
+            model = "gemini-3.5-flash-lite",
+            temperature= 0.0,
+            max_retries = 3,
+            max_tokens = None,
+            timeout=30.0
+        )
+
     def _Load_Split_document(self, text_file: str) -> list:
         loader = TextLoader(file_path=text_file)
         document = loader.load()
@@ -50,18 +56,21 @@ class RAGPipeline:
     
 
     def run_evaluator(self, file_name: list, queries_file: str, outfile: str):
-        all_chunks = []
-        for file in file_name:
-            chunks = self._Load_Split_document(file)
-            all_chunks.extend(chunks)
+        if self.vector_store._collection.count == 0:
+            all_chunks = []
+            for file in file_name:
+                chunks = self._Load_Split_document(file)
+                all_chunks.extend(chunks)
 
-        if not all_chunks:
-            logging.error("No chunks loaded.")
-            raise ValueError("No chunks loaded.")
-        
-        ids = [hashlib.md5(chunk.page_content.encode("utf-8")).hexdigest() for chunk in all_chunks]
-        self.vector_store.add_documents(documents=all_chunks, ids=ids)
-        logging.info(f"Successfully added {self.vector_store._collection.count()} chunks to Chroma.")
+            if not all_chunks:
+                logging.error("No chunks loaded.")
+                raise ValueError("No chunks loaded.")
+            
+            ids = [hashlib.md5(chunk.page_content.encode("utf-8")).hexdigest() for chunk in all_chunks]
+            self.vector_store.add_documents(documents=all_chunks, ids=ids)
+            logging.info(f"Successfully added {self.vector_store._collection.count()} chunks to Chroma.")
+        else:
+            logging.info(f"Using existing database with {self.vector_store._collection.count()} chunks. Skipping ingestion.")
 
         try:
             with open(queries_file, "r", encoding="utf-8") as file:
@@ -71,7 +80,26 @@ class RAGPipeline:
             raise
 
         for i, query in enumerate(content):
+            query = query.strip()
+            if not query:
+                continue
+
             result = self.vector_store.similarity_search(query=query, k=3)
+            context_string = "\n\n".join([doc.page_content for doc in result])
+
+            prompt = f"""
+            You are a strict question-answering assistant. 
+            Answer the question using ONLY the provided context. 
+            If the answer is not in the context, state "I do not know."
+            
+            Context:
+            {context_string}
+            
+            Question: 
+            {query}
+            """
+            response = self.model.invoke(prompt)
+            answer = response.content
             logging.info(f"Successfully generated answer for {i + 1}/{len(content)}.")
 
             
