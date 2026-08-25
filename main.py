@@ -73,9 +73,8 @@ class RAGPipeline:
         for i, query in enumerate(content):
             result = self.vector_store.similarity_search(query=query, k=3)
             logging.info(f"Successfully generated answer for {i + 1}/{len(content)}.")
-            print(result)
-            break
 
+            
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="RAG Pipeline Evaluator")
