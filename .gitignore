@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# RAG / LangChain generated data
+chroma_langchain_db/
+my_embedding_cache
