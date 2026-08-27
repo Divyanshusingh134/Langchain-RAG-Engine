@@ -2,6 +2,8 @@
 
 ![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)
 
+> **Pass 1 (Raw Implementation):** https://github.com/Divyanshusingh134/Advanced-RAG-System
+
 ## What It Is
 This project is Pass 2 of a two-part Retrieval-Augmented Generation (RAG) engineering study. While Pass 1 built the pipeline from scratch using raw HTTP clients and manual vector math, this iteration rebuilds the exact same architecture utilizing **LangChain** and **Ragas**. The objective is to evaluate what these orchestration frameworks abstract, optimize, and obfuscate during data ingestion, retrieval, and automated LLM-as-a-judge evaluation.
 
@@ -70,7 +72,7 @@ Rebuilding the Pass 1 pipeline with LangChain exposed exactly how much boilerpla
 1. **Clone repository and set up environment:**
 
     ```bash
-    git clone [https://github.com/yourusername/Langchain-RAG-Engine.git](https://github.com/yourusername/Langchain-RAG-Engine.git)
+    git clone [https://github.com/Divyanshusingh134/Langchain-RAG-Engine.git](https://github.com/Divyanshusingh134/Langchain-RAG-Engine.git)
     cd Langchain-RAG-Engine
     cp .env.example .env
     ```
