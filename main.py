@@ -2,6 +2,7 @@ import sys
 import logging
 import argparse
 import hashlib
+import time
 import warnings
 from dotenv import load_dotenv
 import pandas
@@ -38,7 +39,7 @@ class RAGPipeline:
         self.embeddings = GoogleGenerativeAIEmbeddings(
             model="gemini-embedding-2",
             task_type="RETRIEVAL_DOCUMENT",
-            output_dimensionality=768
+            output_dimensionality=768,
         )
 
         self.cached_embedder = CacheBackedEmbeddings.from_bytes_store(
@@ -100,12 +101,19 @@ class RAGPipeline:
             logging.error(f"File not found at path: {queries_file}")
             raise
         dataset = []
-        for i, query in enumerate(queries[:3]):
+        for i, query in enumerate(queries):
             query = query.strip()
             if not query:
                 continue
-
-            result = self.vector_store.similarity_search(query=query, k=3)
+            result = []
+            for attempt in range(3):
+                try:
+                    result = self.vector_store.similarity_search(query=query, k=3)
+                    break
+                except Exception as e:
+                    if attempt == 2:
+                        raise e
+                    time.sleep(2)
             context_string = "\n\n".join([doc.page_content for doc in result])
 
             prompt = f"""
