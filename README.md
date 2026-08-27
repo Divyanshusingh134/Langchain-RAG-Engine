@@ -67,7 +67,30 @@ Rebuilding the Pass 1 pipeline with LangChain exposed exactly how much boilerpla
 
 ## How to Run
 
-1. **Set up environment variables:**
-   Ensure your Google Gemini API key is configured in the `.env` file.
-   ```bash
-   GEMINI_API_KEY="your_api_key_here"
+1. **Clone repository and set up environment:**
+
+    ```bash
+    git clone [https://github.com/yourusername/Langchain-RAG-Engine.git](https://github.com/yourusername/Langchain-RAG-Engine.git)
+    cd Langchain-RAG-Engine
+    cp .env.example .env
+    ```
+
+2. **Install dependencies:**
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3. **Run evaluation:**
+
+    ```bash
+    python main.py --data text.txt --queries queries.txt --output eval_results.md
+    ```
+
+## What I Learned / What LangChain Abstracts
+
+* [x] **Document loaders vs. manual file reading:** Standardizes text and metadata encapsulation over raw filesystem I/O.
+* [x] **TextSplitter abstractions vs. explicit NLTK / sliding window loops:** Implements recursive separator fallback rather than blunt token slices.
+* [x] **Vector Store caching vs. raw upserts:** Manages local embedding key-value stores to prevent redundant external API round-trips.
+* [x] **Built-in evaluators vs. custom Cross-Encoder / LLM judge loops:** Replaces ad-hoc string matching with structured metric frameworks (`ragas`).
+* [x] **Framework overhead, execution latency, and debugging visibility:** Balances rapid prototyping against reduced visibility into lower-level network retries and schema mismatches.
