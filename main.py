@@ -1,8 +1,10 @@
+import sys
 import logging
 import argparse
 import hashlib
 import warnings
 from dotenv import load_dotenv
+import pandas
 from ragas import EvaluationDataset, evaluate
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
@@ -15,13 +17,19 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 
 load_dotenv()
-warnings.filterwarnings("ignore", module="langchain_google_genai")
+warnings.simplefilter('ignore')
+def silence_unraisable(args):
+    pass
+
+sys.unraisablehook = silence_unraisable
+
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.ERROR)
+logging.getLogger("httpcore").setLevel(logging.ERROR)
 logging.getLogger("langchain_google_genai").setLevel(logging.ERROR)
-logging.getLogger("google").setLevel(logging.WARNING)
+logging.getLogger("google").setLevel(logging.ERROR)
+logging.getLogger("google.genai").setLevel(logging.ERROR)
 
 class RAGPipeline:
     def __init__(self):
@@ -87,12 +95,12 @@ class RAGPipeline:
 
         try:
             with open(queries_file, "r", encoding="utf-8") as file:
-                content = file.readlines()
+                queries = file.readlines()
         except FileNotFoundError:
             logging.error(f"File not found at path: {queries_file}")
             raise
         dataset = []
-        for i, query in enumerate(content[:1]):
+        for i, query in enumerate(queries[:3]):
             query = query.strip()
             if not query:
                 continue
@@ -103,7 +111,9 @@ class RAGPipeline:
             prompt = f"""
             You are a strict question-answering assistant. 
             Answer the question using ONLY the provided context. 
-            If the answer is not in the context, state "I do not know."
+            If the answer is not in the context, state "I do not know.
+            Do not start your answer with phrases like 'based on the provided context' or 'from the context'. Answer directly.
+            Answer in complete sentences, not just a number or phrase."
             
             Context:
             {context_string}
@@ -112,7 +122,7 @@ class RAGPipeline:
             {query}
             """
             response = self.model.invoke(prompt)
-            if isinstance(response, list):
+            if isinstance(response.content, list):
                 answer = " ".join(block["text"] if isinstance(block, dict) and "text" in block else str(block) for block in response.content)
             else:
                 answer = str(response.content)
@@ -122,16 +132,38 @@ class RAGPipeline:
                 "retrieved_contexts": [docs.page_content for docs in result],
                 "response": answer
             })
-            logging.info(f"Successfully generated answer for {i + 1}/{len(content)}.")
+            logging.info(f"Successfully generated answer for {i + 1}/{len(queries)}.")
         evaluation_dataset = EvaluationDataset.from_list(data=dataset)
-        result = evaluate(
+        results = evaluate(
             dataset=evaluation_dataset,
             metrics=[Faithfulness(), AnswerRelevancy(strictness=1)],
             llm=self.evaluator_llm,
             embeddings=self.evaluator_embedding
         )
-        print(type(result))
-        print(result)
+
+        try:
+            with open(outfile, "a+") as file:
+                file.write("## RAG Evaluation Results\n\n")
+                df = results.to_pandas() #type: ignore
+                for index, row in df.iterrows():
+                    file.write(f"### Query {index}: {row['user_input']}\n\n")
+                    file.write(f"** Answer:** {row['response']}\n")
+                    file.write(f"- **Relevance:** {row['answer_relevancy']:.2f} | **Faithfulness:** {row['faithfulness']:.2f}\n\n")
+                    file.write("---\n\n")
+
+                file.write("## Summary\n\n")
+                file.write(f"- **Total Questions:** {len(queries)}\n\n")
+                if 'answer_relevancy' in df.columns:
+                    file.write(f"- **Average Relevance Score:** {df['answer_relevancy'].mean():.4f}\n")
+                if 'faithfulness' in df.columns:
+                    file.write(f"- **Faithfulness:** {df['faithfulness'].mean() * 100:.0f}%\n")
+
+
+                    
+
+        except FileNotFoundError:
+            logging.error(f"File not found at path: {queries_file}")
+            raise
           
     
 if __name__ == "__main__":
