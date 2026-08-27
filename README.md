@@ -51,13 +51,17 @@ Rebuilding the Pass 1 pipeline with LangChain exposed exactly how much boilerpla
 
 ---
 
-## Evaluation Results
+## Evaluation Results: Pass 1 vs. Pass 2
 
-| Metric | Score |
-| :--- | :--- |
-| **Total Queries Evaluated** | 15 |
-| **Average Relevance Score** |  0.9837 |
-| **Faithfulness Rate** |100% |
+| Metric | Pass 1 (Raw) | Pass 2 (LangChain) |
+| :--- | :--- | :--- |
+| **Total Queries** | 15 | 15 |
+| **Average Relevance** | **1.00** | **0.98** |
+| **Faithfulness** | **100%** | **100%** |
+| **Eval Methodology** | CrossEncoder + LLM-as-a-judge | Ragas Framework |
+
+> **Methodology Note on Relevance Variance:**
+> The slight delta in relevance scores (1.00 vs. 0.98) reflects differing measurement techniques rather than a degradation in retrieval quality. Pass 1 used a localized `CrossEncoder` model (`ms-marco-MiniLM-L-6-v2`) computing raw pairwise semantic similarity scores passed through a sigmoid function. In contrast, Ragas evaluates `AnswerRelevancy` by using an LLM to reverse-engineer synthetic candidate questions directly from the generated answer and computing cosine similarity against the original query vector.
 
 ---
 
